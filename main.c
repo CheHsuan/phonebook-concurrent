@@ -87,13 +87,13 @@ int main(int argc, char *argv[])
     pthread_setconcurrency(THREAD_NUM + 1);
 
     pthread_t *tid = (pthread_t *) malloc(sizeof( pthread_t) * THREAD_NUM);
-    append_a **app = (append_a **) malloc(sizeof(append_a *) * THREAD_NUM);
+    thread_task **task = (thread_task **) malloc(sizeof(thread_task *) * THREAD_NUM);
     for (int i = 0; i < THREAD_NUM; i++)
-        app[i] = new_append_a(map + MAX_LAST_NAME_SIZE * i, map + fs, i, THREAD_NUM, entry_pool + i);
+        task[i] = assign_thread_task(map + MAX_LAST_NAME_SIZE * i, map + fs, i, THREAD_NUM, entry_pool + i);
 
     clock_gettime(CLOCK_REALTIME, &mid);
     for (int i = 0; i < THREAD_NUM; i++)
-        pthread_create( &tid[i], NULL, (void *) &append, (void *) app[i]);
+        pthread_create( &tid[i], NULL, (void *) &append, (void *) task[i]);
 
     for (int i = 0; i < THREAD_NUM; i++)
         pthread_join(tid[i], NULL);
@@ -102,15 +102,15 @@ int main(int argc, char *argv[])
     pHead = pHead->pNext;
     for (int i = 0; i < THREAD_NUM; i++) {
         if (i == 0) {
-            pHead = app[i]->pHead->pNext;
-            dprintf("Connect %d head string %s %p\n", i, app[i]->pHead->pNext->lastName, app[i]->ptr);
+            pHead = task[i]->pHead->pNext;
+            dprintf("Connect %d head string %s %p\n", i, task[i]->pHead->pNext->lastName, task[i]->ptr);
         } else {
-            etmp->pNext = app[i]->pHead->pNext;
-            dprintf("Connect %d head string %s %p\n", i, app[i]->pHead->pNext->lastName, app[i]->ptr);
+            etmp->pNext = task[i]->pHead->pNext;
+            dprintf("Connect %d head string %s %p\n", i, task[i]->pHead->pNext->lastName, task[i]->ptr);
         }
 
-        etmp = app[i]->pLast;
-        dprintf("Connect %d tail string %s %p\n", i, app[i]->pLast->lastName, app[i]->ptr);
+        etmp = task[i]->pLast;
+        dprintf("Connect %d tail string %s %p\n", i, task[i]->pLast->lastName, task[i]->ptr);
         dprintf("round %d\n", i);
     }
 
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
 #else
     free(entry_pool);
     free(tid);
-    free(app);
+    free(task);
     munmap(map, fs);
 #endif
     return 0;

@@ -25,19 +25,19 @@ entry *findName(char lastname[], entry *pHead)
     return NULL;
 }
 
-append_a *new_append_a(char *ptr, char *eptr, int tid, int ntd, entry *start)
+thread_task *assign_thread_task(char *sptr, char *eptr, int tid, int ntd, entry *start)
 {
-    append_a *app = (append_a *) malloc(sizeof(append_a));
+    thread_task *task = (thread_task *) malloc(sizeof(thread_task));
 
-    app->ptr = ptr;
-    app->eptr = eptr;
-    app->tid = tid;
-    app->nthread = ntd;
-    app->entryStart = start;
+    task->start = sptr;
+    task->end = eptr;
+    task->tid = tid;
+    task->nthread = ntd;
+    task->entryStart = start;
 
-    app->pHead = (app->pLast = app->entryStart);
+    task->pHead = (task->pLast = task->entryStart);
 
-    return app;
+    return task;
 }
 
 void append(void *arg)
@@ -47,19 +47,19 @@ void append(void *arg)
 
     clock_gettime( CLOCK_REALTIME, &start);
 
-    append_a *app = (append_a *) arg;
+    thread_task *task = (thread_task *) arg;
 
     int count = 0;
-    entry *j = app->entryStart;
-    for (char *i = app->ptr; i < app->eptr;
-            i += MAX_LAST_NAME_SIZE * app->nthread,
-            j += app->nthread,count++) {
-        app->pLast->pNext = j;
-        app->pLast = app->pLast->pNext;
+    entry *j = task->entryStart;
+    for (char *i = task->start; i < task->end;
+            i += MAX_LAST_NAME_SIZE * task->nthread,
+            j += task->nthread,count++) {
+        task->pLast->pNext = j;
+        task->pLast = task->pLast->pNext;
 
-        app->pLast->lastName = i;
-        dprintf("thread %d append string = %s\n", app->tid, app->pLast->lastName);
-        app->pLast->pNext = NULL;
+        task->pLast->lastName = i;
+        dprintf("thread %d append string = %s\n", task->tid, task->pLast->lastName);
+        task->pLast->pNext = NULL;
     }
     clock_gettime(CLOCK_REALTIME, &end);
     cpu_time = diff_in_second(start, end);
