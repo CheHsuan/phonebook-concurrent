@@ -4,14 +4,25 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
-
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/mman.h>
+#include "malloc.h"
 
 #include IMPL
 
 #define DICT_FILE "./dictionary/words.txt"
+
+#if defined(OPT)
+#include "file.c"
+#include "debug.h"
+#include <fcntl.h>
+#define ALIGN_FILE "align.txt"
+#endif
+
+#ifndef THREAD_NUM
+#define THREAD_NUM 4
+#endif
 
 static double diff_in_second(struct timespec t1, struct timespec t2)
 {
@@ -46,52 +57,42 @@ int main(int argc, char *argv[])
         return -1;
     }
 #else
-
-#include "file.c"
-#include "debug.h"
-#include <fcntl.h>
-#define ALIGN_FILE "align.txt"
     file_align(DICT_FILE, ALIGN_FILE, MAX_LAST_NAME_SIZE);
-    int fd = open(ALIGN_FILE, O_RDONLY | O_NONBLOCK);
+    int fd = open(ALIGN_FILE, O_RDWR | O_NONBLOCK);
     off_t fs = fsize( ALIGN_FILE);
 #endif
 
     /* build the entry */
     entry *pHead, *e;
-    pHead = (entry *) malloc(sizeof(entry));
+#if defined(OPT)
+    pHead = init_entry(sizeof(entry), fs / MAX_LAST_NAME_SIZE);
+#else
+    pHead = init_entry(sizeof(entry), 1);
+#endif
+    assert(pHead && "pHead error");
     printf("size of entry : %lu bytes\n", sizeof(entry));
     e = pHead;
-    e->pNext = NULL;
 
 #if defined(__GNUC__)
     __builtin___clear_cache((char *) pHead, (char *) pHead + sizeof(entry));
 #endif
 
 #if defined(OPT)
-
-#ifndef THREAD_NUM
-#define THREAD_NUM 4
-#endif
-
     clock_gettime(CLOCK_REALTIME, &start);
 
     char *map = mmap(NULL, fs, PROT_READ, MAP_SHARED, fd, 0);
 
-    assert(map && "mmap error");
-
-    /* allocate at beginning */
-    entry *entry_pool = (entry *) malloc(sizeof(entry) * fs / MAX_LAST_NAME_SIZE);
-
-    assert(entry_pool && "entry_pool error");
+    assert(map!=MAP_FAILED && "mmap error");
 
     pthread_setconcurrency(THREAD_NUM + 1);
 
     pthread_t *tid = (pthread_t *) malloc(sizeof( pthread_t) * THREAD_NUM);
     thread_task **task = (thread_task **) malloc(sizeof(thread_task *) * THREAD_NUM);
     for (int i = 0; i < THREAD_NUM; i++)
-        task[i] = assign_thread_task(map + MAX_LAST_NAME_SIZE * i, map + fs, i, THREAD_NUM, entry_pool + i);
+        task[i] = assign_thread_task(map + MAX_LAST_NAME_SIZE * i, map + fs, i, THREAD_NUM, pHead + i);
 
     clock_gettime(CLOCK_REALTIME, &mid);
+    //clock_gettime(CLOCK_REALTIME, &mid);
     for (int i = 0; i < THREAD_NUM; i++)
         pthread_create( &tid[i], NULL, (void *) &append, (void *) task[i]);
 
@@ -99,18 +100,18 @@ int main(int argc, char *argv[])
         pthread_join(tid[i], NULL);
 
     entry *etmp;
-    pHead = pHead->pNext;
+    //pHead = pHead->pNext;
     for (int i = 0; i < THREAD_NUM; i++) {
         if (i == 0) {
             pHead = task[i]->pHead->pNext;
-            dprintf("Connect %d head string %s %p\n", i, task[i]->pHead->pNext->lastName, task[i]->ptr);
+            dprintf("Connect %d head string %s %p\n", i, task[i]->pHead->pNext->lastName, task[i]->start);
         } else {
             etmp->pNext = task[i]->pHead->pNext;
-            dprintf("Connect %d head string %s %p\n", i, task[i]->pHead->pNext->lastName, task[i]->ptr);
+            dprintf("Connect %d head string %s %p\n", i, task[i]->pHead->pNext->lastName, task[i]->start);
         }
 
         etmp = task[i]->pLast;
-        dprintf("Connect %d tail string %s %p\n", i, task[i]->pLast->lastName, task[i]->ptr);
+        dprintf("Connect %d tail string %s %p\n", i, task[i]->pLast->lastName, task[i]->start);
         dprintf("round %d\n", i);
     }
 
@@ -136,8 +137,6 @@ int main(int argc, char *argv[])
     /* close file as soon as possible */
     fclose(fp);
 #endif
-
-    e = pHead;
 
     /* the givn last name to find */
     char input[MAX_LAST_NAME_SIZE] = "zyxel";
@@ -168,14 +167,9 @@ int main(int argc, char *argv[])
     printf("execution time of append() : %lf sec\n", cpu_time1);
     printf("execution time of findName() : %lf sec\n", cpu_time2);
 
-#ifndef OPT
-    while (pHead != NULL) {
-        e = pHead;
-        pHead = pHead->pNext;
-        free(e);
-    }
-#else
-    free(entry_pool);
+    free_entry(pHead);
+
+#if defined(OPT)
     free(tid);
     free(task);
     munmap(map, fs);
