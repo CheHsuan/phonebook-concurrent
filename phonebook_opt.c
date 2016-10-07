@@ -50,13 +50,17 @@ void append(void *arg)
     thread_task *task = (thread_task *) arg;
 
     int count = 0;
-    for (char *i = task->start; i < task->end;
+    char *i;
+    for (i = task->start; i < task->end;
             i += MAX_LAST_NAME_SIZE * task->nthread, count++) {
         task->pLast->lastName = i;
         task->pLast->pNext = task->pLast + 1;
         dprintf("thread %d append string = %s\n", task->tid, task->pLast->lastName);
         task->pLast = task->pLast + task->nthread;
     }
+    if(i == task->end){
+        (task->pLast-task->nthread)->pNext = NULL;
+    }   
     clock_gettime(CLOCK_REALTIME, &end);
     cpu_time = diff_in_second(start, end);
 
