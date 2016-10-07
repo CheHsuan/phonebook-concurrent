@@ -92,29 +92,12 @@ int main(int argc, char *argv[])
         task[i] = assign_thread_task(map + MAX_LAST_NAME_SIZE * i, map + fs, i, THREAD_NUM, pHead + i);
 
     clock_gettime(CLOCK_REALTIME, &mid);
-    //clock_gettime(CLOCK_REALTIME, &mid);
     for (int i = 0; i < THREAD_NUM; i++)
         pthread_create( &tid[i], NULL, (void *) &append, (void *) task[i]);
 
     for (int i = 0; i < THREAD_NUM; i++)
         pthread_join(tid[i], NULL);
-
-    entry *etmp;
-    //pHead = pHead->pNext;
-    for (int i = 0; i < THREAD_NUM; i++) {
-        if (i == 0) {
-            pHead = task[i]->pHead->pNext;
-            dprintf("Connect %d head string %s %p\n", i, task[i]->pHead->pNext->lastName, task[i]->start);
-        } else {
-            etmp->pNext = task[i]->pHead->pNext;
-            dprintf("Connect %d head string %s %p\n", i, task[i]->pHead->pNext->lastName, task[i]->start);
-        }
-
-        etmp = task[i]->pLast;
-        dprintf("Connect %d tail string %s %p\n", i, task[i]->pLast->lastName, task[i]->start);
-        dprintf("round %d\n", i);
-    }
-
+    
     clock_gettime(CLOCK_REALTIME, &end);
     cpu_time1 = diff_in_second(start, end);
 
