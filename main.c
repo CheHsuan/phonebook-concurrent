@@ -43,8 +43,6 @@ int main(int argc, char *argv[])
     FILE *fp;
     int i = 0;
     char line[MAX_LAST_NAME_SIZE];
-#else
-    struct timespec mid;
 #endif
     struct timespec start, end;
     double cpu_time1, cpu_time2;
@@ -91,7 +89,6 @@ int main(int argc, char *argv[])
     for (int i = 0; i < THREAD_NUM; i++)
         task[i] = assign_thread_task(map + MAX_LAST_NAME_SIZE * i, map + fs, i, THREAD_NUM, pHead + i);
 
-    clock_gettime(CLOCK_REALTIME, &mid);
     for (int i = 0; i < THREAD_NUM; i++)
         pthread_create( &tid[i], NULL, (void *) &append, (void *) task[i]);
 
@@ -100,7 +97,6 @@ int main(int argc, char *argv[])
     
     clock_gettime(CLOCK_REALTIME, &end);
     cpu_time1 = diff_in_second(start, end);
-
 #else
     clock_gettime(CLOCK_REALTIME, &start);
     while (fgets(line, sizeof(line), fp)) {
@@ -113,7 +109,6 @@ int main(int argc, char *argv[])
 
     clock_gettime(CLOCK_REALTIME, &end);
     cpu_time1 = diff_in_second(start, end);
-
 #endif
 
 #ifndef OPT
