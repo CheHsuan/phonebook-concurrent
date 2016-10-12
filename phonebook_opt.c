@@ -59,7 +59,8 @@ void append(void *arg)
         task->pLast = task->pLast + task->nthread;
     }
     if(i == task->end){
-        (task->pLast-task->nthread)->pNext = NULL;
+        task->pLast-= task->nthread;
+        task->pLast->pNext = NULL;
     }   
     clock_gettime(CLOCK_REALTIME, &end);
     cpu_time = diff_in_second(start, end);
